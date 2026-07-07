@@ -15,7 +15,13 @@ const ESCOLAS = [
 
 const FAROL_URL = "https://production.d1ljmz1utniczm.amplifyapp.com/";
 
-type ModoId = "gip" | "presencas" | "metas";
+type ModoId =
+  | "gip"
+  | "presencas"
+  | "metas"
+  | "planejamento"
+  | "estagios"
+  | "checkpoint";
 
 const MODOS: {
   id: ModoId;
@@ -44,6 +50,27 @@ const MODOS: {
     sigla: "Metas",
     accent: "bg-rose-600 hover:bg-rose-500",
     buildUrl: (id) => `https://gip.eduquest.dev/metasdeaprendizagem/turma/${id}`,
+  },
+  {
+    id: "planejamento",
+    label: "Planejamento de Aula",
+    sigla: "Planejamento",
+    accent: "bg-amber-600 hover:bg-amber-500",
+    buildUrl: (id) => `https://gip.eduquest.dev/planejamento-aula/turma/${id}`,
+  },
+  {
+    id: "estagios",
+    label: "Estágios de Vida",
+    sigla: "Estágios",
+    accent: "bg-teal-600 hover:bg-teal-500",
+    buildUrl: (id) => `https://gip.eduquest.dev/estagios-de-vida/turma/${id}`,
+  },
+  {
+    id: "checkpoint",
+    label: "Checkpoint",
+    sigla: "Checkpoint",
+    accent: "bg-indigo-600 hover:bg-indigo-500",
+    buildUrl: (id) => `https://gip.eduquest.dev/portfolio-atividades/turma/${id}`,
   },
 ];
 
