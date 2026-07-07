@@ -155,7 +155,7 @@ const MODOS: {
 
 type View = { type: "escola"; index: number } | { type: "farol" };
 
-const WHATSAPP_DESTINO = "5543996305472";
+type StatusEnvio = "idle" | "enviando" | "enviado" | "erro";
 
 function chaveDoDia() {
   return `relatorio-${new Date().toISOString().slice(0, 10)}`;
@@ -164,6 +164,7 @@ function chaveDoDia() {
 export default function Home() {
   const [view, setView] = useState<View>({ type: "escola", index: 0 });
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
+  const [statusEnvio, setStatusEnvio] = useState<StatusEnvio>("idle");
 
   useEffect(() => {
     const salvo = localStorage.getItem(chaveDoDia());
@@ -178,7 +179,7 @@ export default function Home() {
     turmas.forEach((id) => window.open(modo.buildUrl(id), "_blank"));
   }
 
-  function enviarRelatorioCompleto(escolaNome: string, turmas: string[]) {
+  async function enviarRelatorioCompleto(escolaNome: string, turmas: string[]) {
     const preenchidas = turmas.filter((id) => (observacoes[id] || "").trim());
     if (preenchidas.length === 0) return;
 
@@ -193,10 +194,19 @@ export default function Home() {
       ...linhas,
     ].join("\n");
 
-    window.open(
-      `https://wa.me/${WHATSAPP_DESTINO}?text=${encodeURIComponent(mensagem)}`,
-      "_blank",
-    );
+    setStatusEnvio("enviando");
+    try {
+      const res = await fetch("/api/relatorio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: mensagem }),
+      });
+      const data = await res.json();
+      setStatusEnvio(data.ok ? "enviado" : "erro");
+    } catch {
+      setStatusEnvio("erro");
+    }
+    setTimeout(() => setStatusEnvio("idle"), 4000);
   }
 
   return (
@@ -295,7 +305,7 @@ export default function Home() {
                     onClick={() =>
                       enviarRelatorioCompleto(escola.nome, escola.turmas)
                     }
-                    disabled={revisadas === 0}
+                    disabled={revisadas === 0 || statusEnvio === "enviando"}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
                   >
                     <svg
@@ -309,8 +319,21 @@ export default function Home() {
                         d="M2.5 17.5l2-5.8L2.5 2.5l15 7.5-15 7.5Z"
                       />
                     </svg>
-                    Enviar relatório completo
+                    {statusEnvio === "enviando"
+                      ? "Enviando..."
+                      : "Enviar relatório completo"}
                   </button>
+
+                  {statusEnvio === "enviado" && (
+                    <span className="text-xs font-medium text-emerald-400">
+                      ✅ Enviado
+                    </span>
+                  )}
+                  {statusEnvio === "erro" && (
+                    <span className="text-xs font-medium text-red-400">
+                      ⚠️ Falha ao enviar
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
