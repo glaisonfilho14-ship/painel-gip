@@ -155,11 +155,31 @@ const MODOS: {
 
 type View = { type: "escola"; index: number } | { type: "farol" };
 
+const WHATSAPP_DESTINO = "5543996305472";
+
 export default function Home() {
   const [view, setView] = useState<View>({ type: "escola", index: 0 });
+  const [observacoes, setObservacoes] = useState<Record<string, string>>({});
 
   function abrirTodas(modo: (typeof MODOS)[number], turmas: string[]) {
     turmas.forEach((id) => window.open(modo.buildUrl(id), "_blank"));
+  }
+
+  function enviarRelatorio(escolaNome: string, turmaId: string) {
+    const observacao = (observacoes[turmaId] || "").trim();
+    if (!observacao) return;
+
+    const mensagem = [
+      "📋 Relatório de entrega",
+      `Escola: ${escolaNome}`,
+      `Turma: ${turmaId}`,
+      `Observação: ${observacao}`,
+    ].join("\n");
+
+    window.open(
+      `https://wa.me/${WHATSAPP_DESTINO}?text=${encodeURIComponent(mensagem)}`,
+      "_blank",
+    );
   }
 
   return (
@@ -273,6 +293,42 @@ export default function Home() {
                             {modo.sigla}
                           </a>
                         ))}
+                      </div>
+
+                      <div className="mt-3 border-t border-white/10 pt-3">
+                        <label className="mb-1.5 block text-xs font-medium text-neutral-500">
+                          Observação da entrega
+                        </label>
+                        <textarea
+                          value={observacoes[id] || ""}
+                          onChange={(e) =>
+                            setObservacoes((prev) => ({
+                              ...prev,
+                              [id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Escreva aqui o que encontrou na verificação..."
+                          rows={2}
+                          className="w-full resize-none rounded-lg bg-white/5 px-3 py-2 text-xs text-neutral-200 placeholder:text-neutral-600 ring-1 ring-inset ring-white/10 focus:outline-none focus:ring-white/25"
+                        />
+                        <button
+                          onClick={() => enviarRelatorio(escola.nome, id)}
+                          disabled={!(observacoes[id] || "").trim()}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                        >
+                          <svg
+                            viewBox="0 0 20 20"
+                            className="h-3.5 w-3.5 fill-none stroke-current"
+                          >
+                            <path
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M2.5 17.5l2-5.8L2.5 2.5l15 7.5-15 7.5Z"
+                            />
+                          </svg>
+                          Enviar relatório
+                        </button>
                       </div>
                     </div>
                   ))}
