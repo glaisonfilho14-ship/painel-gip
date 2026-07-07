@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 const ESCOLAS = [
   {
@@ -157,23 +157,40 @@ type View = { type: "escola"; index: number } | { type: "farol" };
 
 const WHATSAPP_DESTINO = "5543996305472";
 
+function chaveDoDia() {
+  return `relatorio-${new Date().toISOString().slice(0, 10)}`;
+}
+
 export default function Home() {
   const [view, setView] = useState<View>({ type: "escola", index: 0 });
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const salvo = localStorage.getItem(chaveDoDia());
+    if (salvo) setObservacoes(JSON.parse(salvo));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(chaveDoDia(), JSON.stringify(observacoes));
+  }, [observacoes]);
 
   function abrirTodas(modo: (typeof MODOS)[number], turmas: string[]) {
     turmas.forEach((id) => window.open(modo.buildUrl(id), "_blank"));
   }
 
-  function enviarRelatorio(escolaNome: string, turmaId: string) {
-    const observacao = (observacoes[turmaId] || "").trim();
-    if (!observacao) return;
+  function enviarRelatorioCompleto(escolaNome: string, turmas: string[]) {
+    const preenchidas = turmas.filter((id) => (observacoes[id] || "").trim());
+    if (preenchidas.length === 0) return;
+
+    const linhas = preenchidas.map(
+      (id) => `Turma ${id}: ${observacoes[id].trim()}`,
+    );
 
     const mensagem = [
       "📋 Relatório de entrega",
       `Escola: ${escolaNome}`,
-      `Turma: ${turmaId}`,
-      `Observação: ${observacao}`,
+      "",
+      ...linhas,
     ].join("\n");
 
     window.open(
@@ -247,6 +264,10 @@ export default function Home() {
         ) : (
           (() => {
             const escola = ESCOLAS[view.index];
+            const revisadas = escola.turmas.filter((id) =>
+              (observacoes[id] || "").trim(),
+            ).length;
+
             return (
               <div>
                 <div className="flex items-baseline justify-between">
@@ -254,11 +275,11 @@ export default function Home() {
                     {escola.nome}
                   </h2>
                   <span className="text-sm text-neutral-500">
-                    {escola.turmas.length} turmas
+                    {revisadas} de {escola.turmas.length} revisadas
                   </span>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
                   {MODOS.map((modo) => (
                     <button
                       key={modo.id}
@@ -269,16 +290,53 @@ export default function Home() {
                       Abrir todas — {modo.sigla}
                     </button>
                   ))}
+
+                  <button
+                    onClick={() =>
+                      enviarRelatorioCompleto(escola.nome, escola.turmas)
+                    }
+                    disabled={revisadas === 0}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+                  >
+                    <svg
+                      viewBox="0 0 20 20"
+                      className="h-3.5 w-3.5 fill-none stroke-current"
+                    >
+                      <path
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2.5 17.5l2-5.8L2.5 2.5l15 7.5-15 7.5Z"
+                      />
+                    </svg>
+                    Enviar relatório completo
+                  </button>
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {escola.turmas.map((id) => (
+                  {escola.turmas.map((id) => {
+                    const revisada = Boolean((observacoes[id] || "").trim());
+                    return (
                     <div
                       key={id}
                       className="rounded-2xl bg-white/[0.03] p-4 ring-1 ring-inset ring-white/10 transition-colors hover:ring-white/20"
                     >
-                      <div className="mb-3 text-sm font-semibold text-white">
-                        Turma {id}
+                      <div className="mb-3 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-white">
+                          Turma {id}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            revisada
+                              ? "bg-emerald-500/15 text-emerald-300"
+                              : "bg-neutral-800 text-neutral-500"
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${revisada ? "bg-emerald-400" : "bg-neutral-500"}`}
+                          />
+                          {revisada ? "Revisado" : "Pendente"}
+                        </span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {MODOS.map((modo) => (
@@ -311,27 +369,10 @@ export default function Home() {
                           rows={2}
                           className="w-full resize-none rounded-lg bg-white/5 px-3 py-2 text-xs text-neutral-200 placeholder:text-neutral-600 ring-1 ring-inset ring-white/10 focus:outline-none focus:ring-white/25"
                         />
-                        <button
-                          onClick={() => enviarRelatorio(escola.nome, id)}
-                          disabled={!(observacoes[id] || "").trim()}
-                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
-                        >
-                          <svg
-                            viewBox="0 0 20 20"
-                            className="h-3.5 w-3.5 fill-none stroke-current"
-                          >
-                            <path
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M2.5 17.5l2-5.8L2.5 2.5l15 7.5-15 7.5Z"
-                            />
-                          </svg>
-                          Enviar relatório
-                        </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
