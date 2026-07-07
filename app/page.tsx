@@ -21,7 +21,7 @@ const TURMAS = [
 
 const FAROL_URL = "https://production.d1ljmz1utniczm.amplifyapp.com/";
 
-type Modo = "gip" | "presencas" | "farol";
+type Modo = "gip" | "presencas" | "metas" | "farol";
 
 const MODOS: { id: Modo; label: string; buildUrl?: (id: string) => string }[] = [
   {
@@ -34,12 +34,18 @@ const MODOS: { id: Modo; label: string; buildUrl?: (id: string) => string }[] = 
     label: "Modo Chamada (Presenças)",
     buildUrl: (id) => `https://gip.eduquest.dev/presencas/turma/${id}`,
   },
+  {
+    id: "metas",
+    label: "Metas de Aprendizagem",
+    buildUrl: (id) => `https://gip.eduquest.dev/metasdeaprendizagem/turma/${id}`,
+  },
   { id: "farol", label: "Farol de Aprendizagem" },
 ];
 
 const MODO_ACCENT: Record<Modo, string> = {
   gip: "bg-sky-600 hover:bg-sky-500 focus-visible:outline-sky-400",
   presencas: "bg-violet-600 hover:bg-violet-500 focus-visible:outline-violet-400",
+  metas: "bg-rose-600 hover:bg-rose-500 focus-visible:outline-rose-400",
   farol: "bg-orange-600 hover:bg-orange-500 focus-visible:outline-orange-400",
 };
 
