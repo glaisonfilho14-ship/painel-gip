@@ -2,22 +2,18 @@
 
 import { useState } from "react";
 
-const TURMAS = [
-  "3470",
-  "3472",
-  "3474",
-  "3476",
-  "3477",
-  "3479",
-  "3454",
-  "3452",
-  "3462",
-  "3465",
-  "3464",
-  "3466",
-  "3456",
-  "3478",
+const ESCOLAS = [
+  {
+    nome: "Chico Mendes",
+    turmas: ["3454", "3462", "3452", "3465", "3456", "3464", "3466"],
+  },
+  {
+    nome: "Victor Issler",
+    turmas: ["3470", "3474", "3472", "3476", "3478", "3477", "3479"],
+  },
 ];
+
+const TURMAS = ESCOLAS.flatMap((escola) => escola.turmas);
 
 const FAROL_URL = "https://production.d1ljmz1utniczm.amplifyapp.com/";
 
@@ -130,19 +126,26 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {TURMAS.map((id) => (
-                <a
-                  key={id}
-                  href={modoAtual.buildUrl!(id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`rounded-lg px-3 py-3.5 text-sm font-semibold text-white transition-colors ${MODO_ACCENT[modo]}`}
-                >
-                  Turma {id}
-                </a>
-              ))}
-            </div>
+            {ESCOLAS.map((escola) => (
+              <div key={escola.nome} className="mt-10">
+                <h2 className="mb-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  {escola.nome}
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {escola.turmas.map((id) => (
+                    <a
+                      key={id}
+                      href={modoAtual.buildUrl!(id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`rounded-lg px-3 py-3.5 text-sm font-semibold text-white transition-colors ${MODO_ACCENT[modo]}`}
+                    >
+                      Turma {id}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
 
             <div className="mt-10 border-t border-neutral-800 pt-8">
               <button
