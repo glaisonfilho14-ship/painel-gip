@@ -4,12 +4,12 @@ import { useEffect, useState, type ReactNode } from "react";
 
 const ESCOLAS = [
   {
-    nome: "Chico Mendes",
-    turmas: ["3454", "3462", "3452", "3465", "3456", "3464", "3466"],
+    nome: "João Belchior",
+    turmas: ["4329", "4328", "3425"],
   },
   {
-    nome: "Victor Issler",
-    turmas: ["3470", "3474", "3472", "3476", "3478", "3477", "3479"],
+    nome: "Décio Martins",
+    turmas: ["3255", "3252", "3264", "3263", "3462", "3261"],
   },
 ];
 
