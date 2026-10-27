@@ -34,27 +34,36 @@ async function buscarAulasDoDia(
   }
 }
 
-export type ChamadasPendentes = { pendentes: number; total: number };
+export type ChamadasPendentes = {
+  pendentes: number;
+  total: number;
+  diasPendentes: string[];
+};
 
 export async function buscarChamadasPendentes(
   turmaId: string,
   token: string,
 ): Promise<ChamadasPendentes> {
   const hoje = hojeNoBrasil();
-  const [ano, mes] = hoje.split("-").map(Number);
-  const diasNoMes = new Date(ano, mes, 0).getDate();
+  const [ano, mes, diaHoje] = hoje.split("-").map(Number);
   const datas = Array.from(
-    { length: diasNoMes },
+    { length: diaHoje },
     (_, i) => `${ano}-${String(mes).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`,
   );
 
   const resultados = await Promise.all(
-    datas.map((data) => buscarAulasDoDia(turmaId, data, token)),
+    datas.map(async (data) => ({ data, aulas: await buscarAulasDoDia(turmaId, data, token) })),
   );
 
-  const aulas = resultados.flat();
+  const diasComAula = resultados.filter((d) => d.aulas.length > 0);
+  const aulas = diasComAula.flatMap((d) => d.aulas);
+  const diasPendentes = diasComAula
+    .filter((d) => d.aulas.some((a) => !a.attendance_given))
+    .map((d) => d.data);
+
   return {
     total: aulas.length,
     pendentes: aulas.filter((a) => !a.attendance_given).length,
+    diasPendentes,
   };
 }

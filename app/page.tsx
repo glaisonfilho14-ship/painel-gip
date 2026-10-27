@@ -162,6 +162,11 @@ type ChamadasInfo = ChamadasPendentes | null;
 
 const CHAVE_TOKEN_GIP = "painel-gip-token";
 
+function formatarDiaMes(data: string) {
+  const [, mes, dia] = data.split("-");
+  return `${dia}/${mes}`;
+}
+
 function chaveDoDia() {
   return `relatorio-${new Date().toISOString().slice(0, 10)}`;
 }
@@ -175,6 +180,7 @@ export default function Home() {
   >({});
   const [tokenGip, setTokenGip] = useState("");
   const [tokenSalvo, setTokenSalvo] = useState(false);
+  const [turmaExpandida, setTurmaExpandida] = useState<string | null>(null);
 
   useEffect(() => {
     const salvo = localStorage.getItem(chaveDoDia());
@@ -459,14 +465,32 @@ export default function Home() {
                             Chamadas: sem dados (token pode ter expirado)
                           </span>
                         ) : chamadas.pendentes > 0 ? (
-                          <span className="font-semibold text-red-400">
+                          <button
+                            onClick={() =>
+                              setTurmaExpandida((atual) => (atual === id ? null : id))
+                            }
+                            className="font-semibold text-red-400 hover:underline"
+                          >
                             {chamadas.pendentes} de {chamadas.total} chamadas
-                            pendentes
-                          </span>
+                            pendentes {turmaExpandida === id ? "▲" : "▼"}
+                          </button>
                         ) : (
                           <span className="font-medium text-emerald-400">
                             Chamadas em dia ({chamadas.total}/{chamadas.total})
                           </span>
+                        )}
+
+                        {turmaExpandida === id && chamadas && chamadas.pendentes > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {chamadas.diasPendentes.map((data) => (
+                              <span
+                                key={data}
+                                className="rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] text-red-300"
+                              >
+                                {formatarDiaMes(data)}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
 
