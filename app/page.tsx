@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { buscarChamadasPendentes, type ChamadasPendentes } from "@/lib/gip-client";
 
 const ESCOLAS = [
   {
@@ -157,6 +158,10 @@ type View = { type: "escola"; index: number } | { type: "farol" };
 
 type StatusEnvio = "idle" | "enviando" | "enviado" | "erro";
 
+type ChamadasInfo = ChamadasPendentes | null;
+
+const CHAVE_TOKEN_GIP = "painel-gip-token";
+
 function chaveDoDia() {
   return `relatorio-${new Date().toISOString().slice(0, 10)}`;
 }
@@ -165,15 +170,58 @@ export default function Home() {
   const [view, setView] = useState<View>({ type: "escola", index: 0 });
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [statusEnvio, setStatusEnvio] = useState<StatusEnvio>("idle");
+  const [chamadasPorTurma, setChamadasPorTurma] = useState<
+    Record<string, ChamadasInfo>
+  >({});
+  const [tokenGip, setTokenGip] = useState("");
+  const [tokenSalvo, setTokenSalvo] = useState(false);
 
   useEffect(() => {
     const salvo = localStorage.getItem(chaveDoDia());
     if (salvo) setObservacoes(JSON.parse(salvo));
+
+    const token = localStorage.getItem(CHAVE_TOKEN_GIP);
+    if (token) {
+      setTokenGip(token);
+      setTokenSalvo(true);
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem(chaveDoDia(), JSON.stringify(observacoes));
   }, [observacoes]);
+
+  function salvarToken() {
+    localStorage.setItem(CHAVE_TOKEN_GIP, tokenGip.trim());
+    setTokenSalvo(true);
+  }
+
+  useEffect(() => {
+    if (!tokenSalvo || !tokenGip) return;
+    let cancelado = false;
+
+    async function carregarTodas() {
+      const todasAsTurmas = ESCOLAS.flatMap((e) => e.turmas);
+      for (const id of todasAsTurmas) {
+        if (cancelado) return;
+        try {
+          const info = await buscarChamadasPendentes(id, tokenGip);
+          if (!cancelado) {
+            setChamadasPorTurma((prev) => ({ ...prev, [id]: info }));
+          }
+        } catch {
+          if (!cancelado) {
+            setChamadasPorTurma((prev) => ({ ...prev, [id]: null }));
+          }
+        }
+      }
+    }
+
+    carregarTodas();
+    return () => {
+      cancelado = true;
+    };
+  }, [tokenSalvo, tokenGip]);
 
   function abrirTodas(modo: (typeof MODOS)[number], turmas: string[]) {
     turmas.forEach((id) => window.open(modo.buildUrl(id), "_blank"));
@@ -250,6 +298,29 @@ export default function Home() {
             Farol de Aprendizagem
           </button>
         </div>
+
+        <div className="mt-3 rounded-xl bg-white/[0.03] p-3 ring-1 ring-inset ring-white/10">
+          <label className="block text-xs font-medium text-neutral-500">
+            Token do GIP (fica só no seu navegador)
+          </label>
+          <textarea
+            value={tokenGip}
+            onChange={(e) => {
+              setTokenGip(e.target.value);
+              setTokenSalvo(false);
+            }}
+            placeholder="Cole aqui o token do DevTools (cabeçalho Authorization)"
+            rows={2}
+            className="mt-1.5 w-full resize-none rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] text-neutral-300 placeholder:text-neutral-600 ring-1 ring-inset ring-white/10 focus:outline-none focus:ring-white/25"
+          />
+          <button
+            onClick={salvarToken}
+            disabled={!tokenGip.trim()}
+            className="mt-1.5 w-full rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
+          >
+            {tokenSalvo ? "Token salvo" : "Salvar token"}
+          </button>
+        </div>
       </aside>
 
       <div className="min-w-0 flex-1">
@@ -277,6 +348,10 @@ export default function Home() {
             const revisadas = escola.turmas.filter((id) =>
               (observacoes[id] || "").trim(),
             ).length;
+            const pendentesDaEscola = escola.turmas.reduce((soma, id) => {
+              const info = chamadasPorTurma[id];
+              return soma + (info?.pendentes ?? 0);
+            }, 0);
 
             return (
               <div>
@@ -284,9 +359,16 @@ export default function Home() {
                   <h2 className="text-2xl font-semibold tracking-tight text-white">
                     {escola.nome}
                   </h2>
-                  <span className="text-sm text-neutral-500">
-                    {revisadas} de {escola.turmas.length} revisadas
-                  </span>
+                  <div className="flex items-center gap-3 text-sm text-neutral-500">
+                    {pendentesDaEscola > 0 && (
+                      <span className="font-medium text-red-400">
+                        {pendentesDaEscola} chamada(s) pendente(s)
+                      </span>
+                    )}
+                    <span>
+                      {revisadas} de {escola.turmas.length} revisadas
+                    </span>
+                  </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -339,6 +421,7 @@ export default function Home() {
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {escola.turmas.map((id) => {
                     const revisada = Boolean((observacoes[id] || "").trim());
+                    const chamadas = chamadasPorTurma[id];
                     return (
                     <div
                       key={id}
@@ -361,6 +444,32 @@ export default function Home() {
                           {revisada ? "Revisado" : "Pendente"}
                         </span>
                       </div>
+
+                      <div className="mb-3 text-xs">
+                        {!tokenSalvo ? (
+                          <span className="text-neutral-600">
+                            Chamadas: cole o token do GIP na barra lateral
+                          </span>
+                        ) : chamadas === undefined ? (
+                          <span className="text-neutral-600">
+                            Verificando chamadas...
+                          </span>
+                        ) : chamadas === null || chamadas.total === 0 ? (
+                          <span className="text-neutral-600">
+                            Chamadas: sem dados (token pode ter expirado)
+                          </span>
+                        ) : chamadas.pendentes > 0 ? (
+                          <span className="font-semibold text-red-400">
+                            {chamadas.pendentes} de {chamadas.total} chamadas
+                            pendentes
+                          </span>
+                        ) : (
+                          <span className="font-medium text-emerald-400">
+                            Chamadas em dia ({chamadas.total}/{chamadas.total})
+                          </span>
+                        )}
+                      </div>
+
                       <div className="flex flex-wrap gap-1.5">
                         {MODOS.map((modo) => (
                           <a
