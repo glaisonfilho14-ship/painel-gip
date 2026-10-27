@@ -67,3 +67,61 @@ export async function buscarChamadasPendentes(
     diasPendentes,
   };
 }
+
+export async function buscarQuantidadeAlunos(
+  turmaId: string,
+  token: string,
+): Promise<number | null> {
+  try {
+    const res = await fetch(`${GIP_API_URL}/class/${turmaId}`, {
+      headers: {
+        Authorization: bearer(token),
+        Accept: "application/json, text/plain, */*",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return Array.isArray(json.enrollments) ? json.enrollments.length : null;
+  } catch {
+    return null;
+  }
+}
+
+export type Planejamento = { feito: boolean; periodo: string } | null;
+
+type Periodo = {
+  name: string;
+  start_date: string;
+  end_date: string;
+  plan: { document_link: string } | null;
+};
+
+export async function buscarPlanejamento(
+  turmaId: string,
+  token: string,
+): Promise<Planejamento> {
+  try {
+    const res = await fetch(
+      `${GIP_API_URL}/sprint/periods?page=0&size=10&class_id=${turmaId}`,
+      {
+        headers: {
+          Authorization: bearer(token),
+          Accept: "application/json, text/plain, */*",
+        },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const periodos: Periodo[] = json.items?.sprint?.periods ?? [];
+    const hoje = new Date();
+    const atual = periodos.find(
+      (p) => hoje >= new Date(p.start_date) && hoje <= new Date(p.end_date),
+    );
+    if (!atual) return null;
+    return { feito: Boolean(atual.plan?.document_link), periodo: atual.name };
+  } catch {
+    return null;
+  }
+}

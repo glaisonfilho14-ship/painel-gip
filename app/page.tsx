@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { buscarChamadasPendentes, type ChamadasPendentes } from "@/lib/gip-client";
+import {
+  buscarChamadasPendentes,
+  buscarQuantidadeAlunos,
+  buscarPlanejamento,
+  type ChamadasPendentes,
+  type Planejamento,
+} from "@/lib/gip-client";
 
 const ESCOLAS = [
   {
@@ -178,6 +184,12 @@ export default function Home() {
   const [chamadasPorTurma, setChamadasPorTurma] = useState<
     Record<string, ChamadasInfo>
   >({});
+  const [alunosPorTurma, setAlunosPorTurma] = useState<
+    Record<string, number | null>
+  >({});
+  const [planejamentoPorTurma, setPlanejamentoPorTurma] = useState<
+    Record<string, Planejamento>
+  >({});
   const [tokenGip, setTokenGip] = useState("");
   const [tokenSalvo, setTokenSalvo] = useState(false);
   const [turmaExpandida, setTurmaExpandida] = useState<string | null>(null);
@@ -210,16 +222,15 @@ export default function Home() {
       const todasAsTurmas = ESCOLAS.flatMap((e) => e.turmas);
       for (const id of todasAsTurmas) {
         if (cancelado) return;
-        try {
-          const info = await buscarChamadasPendentes(id, tokenGip);
-          if (!cancelado) {
-            setChamadasPorTurma((prev) => ({ ...prev, [id]: info }));
-          }
-        } catch {
-          if (!cancelado) {
-            setChamadasPorTurma((prev) => ({ ...prev, [id]: null }));
-          }
-        }
+        const [chamadas, alunos, planejamento] = await Promise.all([
+          buscarChamadasPendentes(id, tokenGip).catch(() => null),
+          buscarQuantidadeAlunos(id, tokenGip).catch(() => null),
+          buscarPlanejamento(id, tokenGip).catch(() => null),
+        ]);
+        if (cancelado) return;
+        setChamadasPorTurma((prev) => ({ ...prev, [id]: chamadas }));
+        setAlunosPorTurma((prev) => ({ ...prev, [id]: alunos }));
+        setPlanejamentoPorTurma((prev) => ({ ...prev, [id]: planejamento }));
       }
     }
 
@@ -428,14 +439,21 @@ export default function Home() {
                   {escola.turmas.map((id) => {
                     const revisada = Boolean((observacoes[id] || "").trim());
                     const chamadas = chamadasPorTurma[id];
+                    const alunos = alunosPorTurma[id];
+                    const planejamento = planejamentoPorTurma[id];
                     return (
                     <div
                       key={id}
                       className="rounded-2xl bg-white/[0.03] p-4 ring-1 ring-inset ring-white/10 transition-colors hover:ring-white/20"
                     >
                       <div className="mb-3 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-white">
+                        <span className="flex items-baseline gap-1.5 text-sm font-semibold text-white">
                           Turma {id}
+                          {typeof alunos === "number" && (
+                            <span className="text-xs font-normal text-neutral-500">
+                              · {alunos} alunos
+                            </span>
+                          )}
                         </span>
                         <span
                           className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
@@ -493,6 +511,28 @@ export default function Home() {
                           </div>
                         )}
                       </div>
+
+                      {tokenSalvo && (
+                        <div className="mb-3 text-xs">
+                          {planejamento === undefined ? (
+                            <span className="text-neutral-600">
+                              Verificando planejamento...
+                            </span>
+                          ) : planejamento === null ? (
+                            <span className="text-neutral-600">
+                              Planejamento: sem período ativo
+                            </span>
+                          ) : planejamento.feito ? (
+                            <span className="font-medium text-emerald-400">
+                              Planejamento entregue ({planejamento.periodo})
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-amber-400">
+                              Planejamento pendente ({planejamento.periodo})
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       <div className="flex flex-wrap gap-1.5">
                         {MODOS.map((modo) => (
